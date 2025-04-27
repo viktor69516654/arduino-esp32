@@ -1,0 +1,103 @@
+
+#include <WiFi.h>
+#include <WebServer.h>
+#include <ESP32Servo.h>
+
+WebServer server(80);
+
+Servo kormidlo;
+Servo kotva;
+
+int motorPin = 14;
+int ledPin = 27;
+
+// Access Point název a heslo
+const char* apSSID = "ESP32-LOD";
+const char* apPassword = "12345678";
+
+void setup() {
+  Serial.begin(115200);
+
+  // Nastavení pinů
+  pinMode(motorPin, OUTPUT);
+  pinMode(ledPin, OUTPUT);
+
+  // Připojení serv
+  kormidlo.attach(13);
+  kotva.attach(12);
+
+  // Spuštění Access Pointu
+  WiFi.softAP(apSSID, apPassword);
+  Serial.println("WiFi AP spuštěno");
+  Serial.print("IP adresa: ");
+  Serial.println(WiFi.softAPIP());
+
+  // Webová stránka
+  server.on("/", []() {
+    server.send(200, "text/html", R"rawliteral(
+      <html>
+      <head><meta name="viewport" content="width=device-width, initial-scale=1"></head>
+      <body style="text-align:center;font-family:sans-serif;">
+      <h2>🛶 Ovládání lodi ESP32</h2>
+
+      <button onclick="fetch('/motor/on')">Motor ON</button>
+      <button onclick="fetch('/motor/off')">Motor OFF</button><br><br>
+
+      <button onclick="fetch('/kormidlo/left')">Kormidlo VLEVO</button>
+      <button onclick="fetch('/kormidlo/right')">Kormidlo VPRAVO</button><br><br>
+
+      <button onclick="fetch('/kotva/down')">Kotva DOLŮ</button>
+      <button onclick="fetch('/kotva/up')">Kotva NAHORU</button><br><br>
+
+      <button onclick="fetch('/led/on')">LED ON</button>
+      <button onclick="fetch('/led/off')">LED OFF</button><br><br>
+      </body></html>
+    )rawliteral");
+  });
+
+  // Ovládání motoru
+  server.on("/motor/on", []() {
+    digitalWrite(motorPin, HIGH);
+    server.send(200, "text/plain", "Motor zapnut");
+  });
+  server.on("/motor/off", []() {
+    digitalWrite(motorPin, LOW);
+    server.send(200, "text/plain", "Motor vypnut");
+  });
+
+  // Kormidlo ovládání
+  server.on("/kormidlo/left", []() {
+    kormidlo.write(45);
+    server.send(200, "text/plain", "Kormidlo vlevo");
+  });
+  server.on("/kormidlo/right", []() {
+    kormidlo.write(135);
+    server.send(200, "text/plain", "Kormidlo vpravo");
+  });
+
+  // Kotva ovládání
+  server.on("/kotva/down", []() {
+    kotva.write(120);
+    server.send(200, "text/plain", "Kotva dolů");
+  });
+  server.on("/kotva/up", []() {
+    kotva.write(60);
+    server.send(200, "text/plain", "Kotva nahoru");
+  });
+
+  // LED ovládání
+  server.on("/led/on", []() {
+    digitalWrite(ledPin, HIGH);
+    server.send(200, "text/plain", "LED zapnuta");
+  });
+  server.on("/led/off", []() {
+    digitalWrite(ledPin, LOW);
+    server.send(200, "text/plain", "LED vypnuta");
+  });
+
+  server.begin();
+}
+
+void loop() {
+  server.handleClient();
+}
